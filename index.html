@@ -426,6 +426,13 @@ async function saveInBackground(payload, el) {
         body
       }, 40000);
       if (res.status === "success" || res.status === "duplicate") {
+        // Double-check with the sheet itself before telling the person it is saved.
+        let confirmed = true;
+        try {
+          const chk = await api(`${CONFIG.SCRIPT_URL}?action=checkEmail&email=${encodeURIComponent(payload.email)}`, {}, 20000);
+          if (chk && chk.ok && chk.exists === false) confirmed = false;
+        } catch (_) { /* can't verify right now: trust the server's answer */ }
+        if (!confirmed) throw new Error("not found in sheet yet");   // falls through to the retry wait
         clearPending(); keepPageOpen(false);
         el.style.color = "var(--ok)";
         el.textContent = "✓ Your feedback has been saved.";
