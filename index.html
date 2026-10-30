@@ -80,7 +80,7 @@
     <img id="logoImg" src="https://lh3.googleusercontent.com/d/1DvGVrzdTzNnBgBzpCLzXCv2qVK-SC8V6" alt="College logo"
          onerror="if(!this.dataset.t){this.dataset.t='1';this.src='logo.png';}else{this.parentNode.style.display='none';}">
   </div>
-  <!--p class="college">KPE Society's Dr. G.M. Patil Law College</p-->
+  <p class="college">KPE Society's Dr. G.M. Patil Law College</p>
   <h2>Two-Day National Workshop<br>Intellectual Property Rights in India</h2>
   <p class="theme">Legal Perspectives on Patents, Biotechnology, Brands and Geographical Indications</p>
   <p class="dates">31 October – 1 November 2026</p>
@@ -340,37 +340,118 @@ async function onSubmit(e) {
 
   submitting = true;
   btn.disabled = true;
-  btn.textContent = "Submitting...";
+  btn.textContent = "Preparing...";
   status.style.color = "var(--muted)";
-  status.textContent = "Recording your response...";
+  status.textContent = "";
 
+  const payload = {
+    name: clientCleanName(name), email,
+    speaker1: ratings[0], speaker2: ratings[1], speaker3: ratings[2], speaker4: ratings[3],
+    comments: $("comments").value
+  };
+  savePending(payload);      // remembered on this phone until the server confirms
+  await deliver(payload, true);
+  submitting = false;
+}
+
+/* ---------- certificate first, saving in the background ---------- */
+const PENDING_KEY = "ipr_pending_v1";
+function loadPending() { try { return JSON.parse(localStorage.getItem(PENDING_KEY) || "null"); } catch (_) { return null; } }
+function savePending(p) { try { localStorage.setItem(PENDING_KEY, JSON.stringify(p)); } catch (_) {} }
+function clearPending() { try { localStorage.removeItem(PENDING_KEY); } catch (_) {} }
+
+// Same cleaning the server does (letters of any script, spaces . ' - ; Title Case)
+function clientCleanName(v) {
+  return String(v || "")
+    .replace(/[^\p{L}\p{M}\s.'\-]/gu, "")
+    .replace(/\s+/g, " ").trim().slice(0, 80).toLowerCase()
+    .replace(/(^|[\s.'\-])(\p{L})/gu, (m, a, b) => a + b.toUpperCase());
+}
+
+function addDownloadControls(box, pdf, before) {
+  // Some in-app browsers (WhatsApp, Instagram) block automatic downloads, so offer a manual one.
+  const a = document.createElement("a");
+  a.className = "fallback";
+  a.href = URL.createObjectURL(pdf.blob);
+  a.download = pdf.filename;
+  a.target = "_blank";
+  a.textContent = "Download didn't start? Tap here.";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Download certificate again";
+  btn.onclick = () => a.click();
+  box.insertBefore(a, before || null);
+  box.insertBefore(btn, before || null);
+}
+
+async function deliver(payload, autoDownload) {
+  const name = payload.name;
+  const box = showMessage("Thank you!", "Preparing your certificate...", "var(--ok)");
+  const saveEl = document.createElement("div");
+  saveEl.className = "status";
+  saveEl.setAttribute("aria-live", "polite");
+  box.append(saveEl);
+  const saving = saveInBackground(payload, saveEl);     // starts immediately, in parallel
   try {
-    const res = await api(CONFIG.SCRIPT_URL, {
-      method: "POST",
-      // text/plain avoids a CORS preflight, which Apps Script can't answer
-      headers: { "Content-Type": "text/plain;charset=utf-8" },
-      body: JSON.stringify({
-        name, email,
-        speaker1: ratings[0], speaker2: ratings[1], speaker3: ratings[2], speaker4: ratings[3],
-        comments: $("comments").value
-      })
-    }, 45000);   // allow for a busy server (submissions are written one at a time)
-    if (res.status !== "success" && res.status !== "duplicate") {
-      throw new Error(res.message || "Submission failed.");
-    }
-    status.textContent = "Generating your certificate...";
-    const pdf = await buildCertificate(res.cleanName);
-    triggerDownload(pdf);
-    showDone(res.status === "duplicate" ? "Certificate ready" : "Thank you!", res.cleanName, pdf);
+    const pdf = await buildCertificate(name);
+    if (autoDownload) triggerDownload(pdf);
+    box.querySelector("p").textContent = "Certificate for " + name + " is ready.";
+    addDownloadControls(box, pdf, saveEl);
   } catch (err) {
-    status.style.color = "var(--err)";
-    status.textContent = (err.name === "AbortError" ? "The server took too long. " : "") +
-      "Error: " + err.message + " You can tap submit again.";
-    btn.disabled = false;
-    btn.textContent = "Submit feedback & get certificate";
-  } finally {
-    submitting = false;
+    box.querySelector("p").textContent = "Your feedback is being saved, but the certificate could not be built: " + err.message;
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.textContent = "Try building the certificate again";
+    retry.onclick = () => deliver(payload, true);
+    box.insertBefore(retry, saveEl);
   }
+  await saving;
+}
+
+function keepPageOpen(on) { window.onbeforeunload = on ? (e) => { e.preventDefault(); e.returnValue = ""; } : null; }
+
+async function saveInBackground(payload, el) {
+  const MAX_TRIES = 12;
+  const body = JSON.stringify(payload);
+  keepPageOpen(true);
+  el.style.color = "var(--muted)";
+  el.textContent = "Saving your feedback... please keep this page open.";
+  for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
+    try {
+      // Retrying is safe: the server answers "duplicate" for an email it already has.
+      const res = await api(CONFIG.SCRIPT_URL, {
+        method: "POST",
+        // text/plain avoids a CORS preflight, which Apps Script can't answer
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body
+      }, 40000);
+      if (res.status === "success" || res.status === "duplicate") {
+        clearPending(); keepPageOpen(false);
+        el.style.color = "var(--ok)";
+        el.textContent = "✓ Your feedback has been saved.";
+        return true;
+      }
+      if (!res.retry) {                       // a real rejection (e.g. email not allowed): don't loop
+        clearPending(); keepPageOpen(false);
+        el.style.color = "var(--err)";
+        el.textContent = (res.message || "Your feedback could not be saved.") + " Your certificate is still valid.";
+        return false;
+      }
+    } catch (_) { /* timeout, network blip or busy server: wait and try again */ }
+    if (attempt < MAX_TRIES) {
+      el.textContent = "Saving your feedback... many people are submitting, retrying automatically. Please keep this page open.";
+      await new Promise(r => setTimeout(r, Math.min(2000 * attempt, 15000) + Math.random() * 3000));
+    }
+  }
+  keepPageOpen(false);
+  el.style.color = "var(--err)";
+  el.textContent = "Your feedback is not saved yet. Your certificate is fine. ";
+  const again = document.createElement("button");
+  again.type = "button";
+  again.textContent = "Try saving again";
+  again.onclick = () => { again.remove(); saveInBackground(payload, el); };
+  el.append(again);
+  return false;
 }
 
 /* ---------- certificate (runs entirely in the browser) ---------- */
@@ -455,6 +536,8 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
     return;
   }
+  const pending = loadPending();
+  if (pending && pending.name && pending.email) { await deliver(pending, false); return; }   // finish a save that was interrupted
   buildForm();
 });
 </script>
