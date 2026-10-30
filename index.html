@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Feedback and certificate portal for the Two-Day National Workshop on Intellectual Property Rights in India, KPE Society's Dr. G.M. Patil Law College.">
+  <meta name="author" content="NK">
+  <title>IPR Workshop Feedback & Certificate</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    :root { --primary:#673ab7; --primary-dark:#512da8; --ok:#2e7d32; --err:#d32f2f; --muted:#6c757d; }
+    * { box-sizing: border-box; }
+    body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background-color:#f0ebf8; margin:0; padding:20px; color:#333; }
+    .container { max-width:650px; background:#fff; margin:0 auto; padding:30px; border-radius:8px; border-top:10px solid var(--primary); box-shadow:0 2px 10px rgba(0,0,0,.1); }
+    .logo { text-align:center; margin-bottom:16px; }
+    .logo img { max-height:100px; max-width:100%; }
+    .college { text-align:center; font-size:13px; color:var(--muted); margin:0 0 14px; }
+    h2 { margin:0 0 6px; color:#202124; font-size:21px; text-align:center; line-height:1.3; }
+    h3 { margin:0 0 8px; }
+    .theme { text-align:center; font-size:14px; color:#555; margin:0 0 6px; }
+    .dates { text-align:center; font-size:13px; font-weight:600; color:var(--primary); margin:0 0 18px; }
+    hr { border:0; height:1px; background:#eee; margin:0 0 22px; }
+    .form-group { margin-bottom:22px; }
+    label.lbl, .lbl { display:block; font-weight:bold; margin-bottom:8px; font-size:15px; }
+    input[type="email"], input[type="text"], textarea { width:100%; padding:12px; border:1px solid #ccc; border-radius:4px; font-size:16px; font-family:inherit; }
+    textarea { resize:vertical; }
+    input:focus, textarea:focus { outline:2px solid var(--primary); outline-offset:0; border-color:var(--primary); }
+    .hint { font-size:12px; color:var(--muted); margin-top:6px; }
+    .status { font-size:13px; font-weight:bold; margin-top:6px; min-height:18px; }
+    .session { border:1px solid #e3dcf2; border-radius:6px; padding:14px; margin-bottom:14px; background:#faf8fd; }
+    .session .day { font-size:12px; color:var(--muted); margin-bottom:4px; }
+    .session .who { font-weight:bold; font-size:15px; }
+    .session .role { font-size:13px; color:#555; }
+    .session .topic { font-size:13px; font-style:italic; color:#444; margin:6px 0 10px; }
+    .chips { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+    .chip { position:relative; display:block; }
+    .chip input { position:absolute; opacity:0; pointer-events:none; }
+    .chip span { display:block; text-align:center; padding:10px 4px; border:1px solid #ccc; border-radius:4px; background:#fff; font-size:13px; cursor:pointer; }
+    .chip input:checked + span { background:var(--primary); border-color:var(--primary); color:#fff; font-weight:bold; }
+    .chip input:focus-visible + span { outline:2px solid var(--primary); outline-offset:2px; }
+    .session.missing { border-color:var(--err); }
+    button { background-color:var(--primary); color:#fff; padding:14px 24px; border:none; border-radius:4px; cursor:pointer; font-size:16px; font-weight:bold; width:100%; transition:background-color .3s; margin-top:10px; }
+    button:disabled { background-color:#9e9e9e; cursor:not-allowed; }
+    button:hover:not(:disabled) { background-color:var(--primary-dark); }
+    .notice { padding:16px; border-radius:6px; background:#eef2ff; border:1px solid #c7d2fe; margin:0 0 22px; text-align:center; }
+    .notice p { margin:0 0 6px; font-size:14px; color:#1e40af; }
+    .center { text-align:center; padding:30px 10px; }
+    .fallback { display:block; margin-top:14px; font-size:13px; color:var(--primary); }
+    .privacy { font-size:12px; color:var(--muted); text-align:center; margin-top:14px; }
+    .hidden { display:none; }
+    @media (max-width:600px) { body { padding:10px; } .container { padding:20px 15px; border-top-width:6px; } h2 { font-size:18px; } .chips { grid-template-columns:1fr 1fr; } }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="logo">
+    <img id="logoImg" src="https://lh3.googleusercontent.com/d/1DvGVrzdTzNnBgBzpCLzXCv2qVK-SC8V6" alt="College logo"
+         onerror="if(!this.dataset.t){this.dataset.t='1';this.src='logo.png';}else{this.parentNode.style.display='none';}">
+  </div>
+  <p class="college">KPE Society's Dr. G.M. Patil Law College</p>
+  <h2>Two-Day National Workshop<br>Intellectual Property Rights in India</h2>
+  <p class="theme">Legal Perspectives on Patents, Biotechnology, Brands and Geographical Indications</p>
+  <p class="dates">31 October – 1 November 2026</p>
+  <hr>
+  <div id="portal"></div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const CONFIG = {
+  SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxHLdREznCJ0LSB8MCGr92BF5jnawPAeCqu-HffAZ8un0f_euUeL1cEE6jMPk-Ed0IvNw/exec",
+  TEMPLATE_URL: "certificate_template.jpg",   // blank certificate PNG in the same repo folder
+  RATINGS: ["Excellent", "Very Good", "Good", "Satisfactory"],
+  SESSIONS: [
+    { day: "Day 1 · 31 Oct 2026 · 10:00 a.m. – 11:30 a.m.",
+      speaker: "Dr. Anindya Sircar", role: "IP Consultant",
+      topic: "Patents & Biotechnology" },
+    { day: "Day 1 · 31 Oct 2026 · 11:45 a.m. – 1:15 p.m.",
+      speaker: "Mr. Bharat Goyal", role: "Assistant Controller of Patents & Designs",
+      topic: "Patents in India: From Innovation to Protection" },
+    { day: "Day 2 · 1 Nov 2026 · 10:00 a.m. – 11:30 a.m.",
+      speaker: "Ms. Preeti Dahiya", role: "Senior Examiner of Trademarks & Geographical Indications",
+      topic: "Trade Marks in India: From Brand Creation to Legal Protection" },
+    { day: "Day 2 · 1 Nov 2026 · 11:45 a.m. – 1:15 p.m.",
+      speaker: "Mr. Prashant Bhairappanavar", role: "Assistant Registrar, Trademarks, Geographical Indications & Copyright",
+      topic: "Understanding Geographical Indications (GI)" }
+  ],
+  NAME_Y_RATIO: 0.52,        // vertical position of the name (0 = top, 1 = bottom)
+  NAME_MAX_WIDTH_RATIO: 0.7, // name shrinks to fit this share of the page width
+  NAME_FONT_RATIO: 0.07,     // starting font size as a share of image width
+  NAME_FONT: '"Times New Roman", Times, serif',
+  NAME_COLOR: "#111827"
+};
+/* ========================================== */
+
+const $ = (id) => document.getElementById(id);
+const portal = $("portal");
+const EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/;
+
+async function api(url, options = {}, timeoutMs = 25000) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: ctrl.signal });
+    return await res.json();
+  } finally { clearTimeout(t); }
+}
+
+/* ---------- simple views ---------- */
+function showMessage(title, text, color) {
+  portal.replaceChildren();
+  const box = document.createElement("div");
+  box.className = "center";
+  const h = document.createElement("h3");
+  h.textContent = title;
+  if (color) h.style.color = color;
+  const p = document.createElement("p");
+  p.textContent = text;
+  box.append(h, p);
+  portal.append(box);
+  return box;
+}
+
+function showDone(title, name, pdf) {
+  const box = showMessage(title, "Certificate for " + name + " is ready.", "var(--ok)");
+  // Some in-app browsers (WhatsApp, Instagram) block automatic downloads, so offer a manual one.
+  const a = document.createElement("a");
+  a.className = "fallback";
+  a.href = URL.createObjectURL(pdf.blob);
+  a.download = pdf.filename;
+  a.target = "_blank";
+  a.textContent = "Download didn't start? Tap here.";
+  box.append(a);
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Download certificate again";
+  btn.onclick = () => a.click();
+  box.append(btn);
+}
+
+/* ---------- form ---------- */
+function buildForm() {
+  portal.innerHTML = `
+    <form id="feedbackForm" novalidate>
+      <div class="form-group">
+        <label class="lbl" for="emailInput">Email address *</label>
+        <input type="email" id="emailInput" placeholder="name@example.com" autocomplete="email" inputmode="email" required>
+        <div id="emailStatus" class="status" aria-live="polite"></div>
+      </div>
+
+      <div id="dupBox" class="notice hidden">
+        <p>Feedback for this email is already recorded.</p>
+        <button id="reDownloadBtn" type="button">Download my certificate</button>
+      </div>
+
+      <div class="form-group">
+        <label class="lbl" for="nameInput">Full name (as it should appear on the certificate) *</label>
+        <input type="text" id="nameInput" maxlength="80" autocomplete="name" placeholder="e.g., Adv. Rajesh Kulkarni" required>
+        <div class="hint">Capitalisation is fixed automatically. Please check your spelling.</div>
+      </div>
+
+      <div class="lbl">Rate each session *</div>
+      <div id="ratings"></div>
+
+      <div class="form-group">
+        <label class="lbl" for="comments">Suggestions / feedback</label>
+        <textarea id="comments" rows="3" maxlength="1000" placeholder="What worked well? What could improve?"></textarea>
+      </div>
+
+      <button type="submit" id="submitBtn" disabled>Enter your email to continue</button>
+      <div id="submitStatus" class="status" aria-live="polite"></div>
+      <p class="privacy">Your email is used only to issue your certificate and avoid duplicate entries.</p>
+    </form>`;
+
+  const wrap = $("ratings");
+  CONFIG.SESSIONS.forEach((s, i) => {
+    const box = document.createElement("div");
+    box.className = "session";
+    box.id = "session" + i;
+    box.setAttribute("role", "radiogroup");
+    box.setAttribute("aria-labelledby", "who" + i);
+
+    const day = document.createElement("div"); day.className = "day"; day.textContent = s.day;
+    const who = document.createElement("div"); who.className = "who"; who.id = "who" + i; who.textContent = s.speaker;
+    const role = document.createElement("div"); role.className = "role"; role.textContent = s.role;
+    const topic = document.createElement("div"); topic.className = "topic"; topic.textContent = "“" + s.topic + "”";
+    const chips = document.createElement("div"); chips.className = "chips";
+    CONFIG.RATINGS.forEach(r => {
+      const l = document.createElement("label"); l.className = "chip";
+      const inp = document.createElement("input"); inp.type = "radio"; inp.name = "rating" + i; inp.value = r;
+      inp.addEventListener("change", () => box.classList.remove("missing"));
+      const sp = document.createElement("span"); sp.textContent = r;
+      l.append(inp, sp);
+      chips.append(l);
+    });
+    box.append(day, who, role, topic, chips);
+    wrap.append(box);
+  });
+
+  wireEmailCheck();
+  $("feedbackForm").addEventListener("submit", onSubmit);
+}
+
+/* ---------- email check runs in the background; only Submit waits for it ---------- */
+// states: idle | checking | ready | unknown (pre-check failed; server will decide) | exists | blocked
+let emailState = "idle";
+let checkSeq = 0;
+let debounce;
+
+function setEmailState(state) {
+  emailState = state;
+  const btn = $("submitBtn");
+  const canSubmit = state === "ready" || state === "unknown";
+  btn.disabled = !canSubmit;
+  btn.textContent =
+    state === "checking" ? "Verifying your email..." :
+    canSubmit ? "Submit feedback & get certificate" :
+    state === "exists" ? "Already submitted" :
+    state === "blocked" ? "Email not on attendee list" :
+    "Enter your email to continue";
+  $("dupBox").classList.toggle("hidden", state !== "exists");
+}
+
+function wireEmailCheck() {
+  const input = $("emailInput");
+  input.addEventListener("input", () => {
+    clearTimeout(debounce);
+    checkSeq++;                          // invalidates any check still in flight
+    $("emailStatus").textContent = "";
+    setEmailState("idle");
+    debounce = setTimeout(checkEmail, 700);
+  });
+  input.addEventListener("blur", () => {
+    clearTimeout(debounce);
+    if (emailState === "idle") checkEmail();
+  });
+}
+
+async function checkEmail() {
+  const email = $("emailInput").value.trim().toLowerCase();
+  const status = $("emailStatus");
+  if (!EMAIL_RE.test(email)) {
+    if (email) { status.style.color = "var(--err)"; status.textContent = "Please enter a valid email address."; }
+    return;
+  }
+  const seq = ++checkSeq;
+  setEmailState("checking");
+  status.style.color = "var(--muted)";
+  status.textContent = "Checking in the background. You can keep filling the form.";
+  try {
+    const data = await api(`${CONFIG.SCRIPT_URL}?action=checkEmail&email=${encodeURIComponent(email)}`);
+    if (seq !== checkSeq) return;         // a newer edit superseded this check
+    if (!data.ok) { setEmailState("unknown"); status.style.color = "var(--muted)"; status.textContent = ""; return; }
+    if (data.allowed === false) {
+      setEmailState("blocked");
+      status.style.color = "var(--err)";
+      status.textContent = "This email is not on the attendee list. Please contact the organisers.";
+    } else if (data.exists) {
+      setEmailState("exists");
+      status.style.color = "var(--err)";
+      status.textContent = "Feedback already recorded for this email.";
+      $("reDownloadBtn").onclick = () => reDownload(data.name);
+    } else {
+      setEmailState("ready");
+      status.style.color = "var(--ok)";
+      status.textContent = "✓ Email verified.";
+    }
+  } catch (_) {
+    if (seq !== checkSeq) return;
+    // Pre-check failed (network or server). Don't block: the server re-checks on submit anyway.
+    setEmailState("unknown");
+    status.style.color = "var(--muted)";
+    status.textContent = "";
+  }
+}
+
+async function reDownload(name) {
+  const btn = $("reDownloadBtn");
+  btn.disabled = true; btn.textContent = "Generating...";
+  try {
+    const pdf = await buildCertificate(name);
+    triggerDownload(pdf);
+    showDone("Certificate downloaded", name, pdf);
+  } catch (err) {
+    btn.disabled = false; btn.textContent = "Download my certificate";
+    $("emailStatus").style.color = "var(--err)";
+    $("emailStatus").textContent = "Could not build the certificate: " + err.message;
+  }
+}
+
+/* ---------- submit ---------- */
+let submitting = false;
+async function onSubmit(e) {
+  e.preventDefault();
+  if (submitting || !(emailState === "ready" || emailState === "unknown")) return;
+  const status = $("submitStatus");
+  const btn = $("submitBtn");
+
+  const name = $("nameInput").value.trim();
+  const email = $("emailInput").value.trim().toLowerCase();
+  const ratings = CONFIG.SESSIONS.map((_, i) => {
+    const c = document.querySelector(`input[name="rating${i}"]:checked`);
+    return c ? c.value : "";
+  });
+
+  status.style.color = "var(--err)";
+  if (name.length < 3) { status.textContent = "Please enter your full name."; $("nameInput").focus(); return; }
+  const firstMissing = ratings.findIndex(r => !r);
+  if (firstMissing >= 0) {
+    ratings.forEach((r, i) => $("session" + i).classList.toggle("missing", !r));
+    status.textContent = "Please rate every session.";
+    $("session" + firstMissing).scrollIntoView({ behavior: "smooth", block: "center" });
+    return;
+  }
+
+  submitting = true;
+  btn.disabled = true;
+  btn.textContent = "Submitting...";
+  status.style.color = "var(--muted)";
+  status.textContent = "Recording your response...";
+
+  try {
+    const res = await api(CONFIG.SCRIPT_URL, {
+      method: "POST",
+      // text/plain avoids a CORS preflight, which Apps Script can't answer
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({
+        name, email,
+        speaker1: ratings[0], speaker2: ratings[1], speaker3: ratings[2], speaker4: ratings[3],
+        comments: $("comments").value
+      })
+    });
+    if (res.status !== "success" && res.status !== "duplicate") {
+      throw new Error(res.message || "Submission failed.");
+    }
+    status.textContent = "Generating your certificate...";
+    const pdf = await buildCertificate(res.cleanName);
+    triggerDownload(pdf);
+    showDone(res.status === "duplicate" ? "Certificate ready" : "Thank you!", res.cleanName, pdf);
+  } catch (err) {
+    status.style.color = "var(--err)";
+    status.textContent = (err.name === "AbortError" ? "The server took too long. " : "") +
+      "Error: " + err.message + " You can tap submit again.";
+    btn.disabled = false;
+    btn.textContent = "Submit feedback & get certificate";
+  } finally {
+    submitting = false;
+  }
+}
+
+/* ---------- certificate (runs entirely in the browser) ---------- */
+let templatePromise;
+function loadTemplate() {
+  if (!templatePromise) {
+    templatePromise = new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => { templatePromise = null; reject(new Error("certificate template could not be loaded")); };
+      img.src = CONFIG.TEMPLATE_URL;
+    });
+  }
+  return templatePromise;
+}
+
+async function buildCertificate(name) {
+  const img = await loadTemplate();
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0);
+
+  let size = Math.round(canvas.width * CONFIG.NAME_FONT_RATIO);
+  const maxW = canvas.width * CONFIG.NAME_MAX_WIDTH_RATIO;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = CONFIG.NAME_COLOR;
+  do {
+    ctx.font = `bold ${size}px ${CONFIG.NAME_FONT}`;
+    size -= 2;
+  } while (ctx.measureText(name).width > maxW && size > 12);
+  ctx.fillText(name, canvas.width / 2, canvas.height * CONFIG.NAME_Y_RATIO);
+
+  const { jsPDF } = window.jspdf;
+  const landscape = canvas.width >= canvas.height;
+  const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "mm", format: "a4" });
+  pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0,
+    pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
+
+  return {
+    blob: pdf.output("blob"),
+    filename: name.replace(/[^\p{L}\p{N}]+/gu, "_") + "_Certificate.pdf"
+  };
+}
+
+function triggerDownload(pdf) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(pdf.blob);
+  a.download = pdf.filename;
+  document.body.append(a);
+  a.click();
+  a.remove();
+}
+
+/* ---------- start: signed re-issue link, or normal form ---------- */
+window.addEventListener("DOMContentLoaded", async () => {
+  const q = new URLSearchParams(location.search);
+  const email = q.get("email"), name = q.get("name"), sig = q.get("sig");
+
+  if (email && name && sig) {
+    showMessage("Verifying your certificate link...", "One moment.");
+    try {
+      const r = await api(`${CONFIG.SCRIPT_URL}?action=verifySignedLink&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name)}&sig=${encodeURIComponent(sig)}`);
+      if (!r.valid) { showMessage("Invalid link", r.message || "This link is not valid.", "var(--err)"); return; }
+      const pdf = await buildCertificate(r.name);
+      triggerDownload(pdf);
+      showDone("Certificate downloaded", r.name, pdf);
+    } catch (err) {
+      showMessage("Something went wrong", "Could not verify the link: " + err.message, "var(--err)");
+    }
+    return;
+  }
+  buildForm();
+});
+</script>
+</body>
+</html>
