@@ -3,10 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Feedback and certificate portal for the Two-Day National Workshop on Intellectual Property Rights in India, KPE Society's Dr. G.M. Patil Law College.">
-  <meta name="author" content="NK">
   <title>IPR Workshop Feedback & Certificate</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <meta name="description" content="Rate the four sessions and download your Certificate of Participation. Two-Day National Workshop on Intellectual Property Rights in India, 31 Oct – 1 Nov 2026, Dr. G.M. Patil Law College, Dharwad.">
+  <meta name="author" content="NK">
+  <meta name="theme-color" content="#673ab7">
+  <!-- Keep this page out of search results; link previews (WhatsApp etc.) are not affected -->
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://naveenkoti.github.io/workshop-ipr/">
+
+  <!-- Link preview (WhatsApp, Telegram, LinkedIn, Facebook, Slack...) -->
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="KPE Society's Dr. G.M. Patil Law College">
+  <meta property="og:title" content="IPR Workshop: Feedback & Certificate">
+  <meta property="og:description" content="Rate the sessions and download your Certificate of Participation. 31 Oct – 1 Nov 2026, Dharwad.">
+  <meta property="og:url" content="https://naveenkoti.github.io/workshop-ipr/">
+  <meta property="og:image" content="https://naveenkoti.github.io/workshop-ipr/og-image.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Two-Day National Workshop on Intellectual Property Rights in India, 31 October to 1 November 2026">
+  <meta property="og:locale" content="en_IN">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="IPR Workshop: Feedback & Certificate">
+  <meta name="twitter:description" content="Rate the sessions and download your Certificate of Participation. 31 Oct – 1 Nov 2026, Dharwad.">
+  <meta name="twitter:image" content="https://naveenkoti.github.io/workshop-ipr/og-image.jpg">
+
+  <!-- defer: the page paints first; jsPDF is only needed once a certificate is built -->
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
     :root { --primary:#673ab7; --primary-dark:#512da8; --ok:#2e7d32; --err:#d32f2f; --muted:#6c757d; }
     * { box-sizing: border-box; }
@@ -69,7 +92,7 @@
 /* ================= CONFIG ================= */
 const CONFIG = {
   SCRIPT_URL: "https://script.google.com/macros/s/AKfycbxHLdREznCJ0LSB8MCGr92BF5jnawPAeCqu-HffAZ8un0f_euUeL1cEE6jMPk-Ed0IvNw/exec",
-  TEMPLATE_URL: "certificate_template.jpg",   // blank certificate PNG in the same repo folder
+  TEMPLATE_URL: "certificate_template.jpg",   // blank certificate image in the same repo folder
   RATINGS: ["Excellent", "Very Good", "Good", "Satisfactory"],
   SESSIONS: [
     { day: "Day 1 · 31 Oct 2026 · 10:00 a.m. – 11:30 a.m.",
@@ -85,11 +108,13 @@ const CONFIG = {
       speaker: "Mr. Prashant Bhairappanavar", role: "Assistant Registrar, Trademarks, Geographical Indications & Copyright",
       topic: "Understanding Geographical Indications (GI)" }
   ],
-  NAME_Y_RATIO: 0.52,        // vertical position of the name (0 = top, 1 = bottom)
-  NAME_MAX_WIDTH_RATIO: 0.7, // name shrinks to fit this share of the page width
-  NAME_FONT_RATIO: 0.07,     // starting font size as a share of image width
+  // Tuned on the real certificate: centres the name in the blank gap between
+  // "This is to certify that" and "has participated in..."
+  NAME_Y_RATIO: 0.535,       // vertical position of the name (0 = top, 1 = bottom)
+  NAME_MAX_WIDTH_RATIO: 0.72, // name shrinks to fit this share of the page width
+  NAME_FONT_RATIO: 0.042,    // starting font size as a share of image width
   NAME_FONT: '"Times New Roman", Times, serif',
-  NAME_COLOR: "#111827"
+  NAME_COLOR: "#1a1a4e"      // dark navy, matches the certificate text
 };
 /* ========================================== */
 
@@ -329,7 +354,7 @@ async function onSubmit(e) {
         speaker1: ratings[0], speaker2: ratings[1], speaker3: ratings[2], speaker4: ratings[3],
         comments: $("comments").value
       })
-    });
+    }, 45000);   // allow for a busy server (submissions are written one at a time)
     if (res.status !== "success" && res.status !== "duplicate") {
       throw new Error(res.message || "Submission failed.");
     }
@@ -383,13 +408,17 @@ async function buildCertificate(name) {
 
   const { jsPDF } = window.jspdf;
   const landscape = canvas.width >= canvas.height;
-  const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "mm", format: "a4" });
+  // Page takes the certificate's own proportions (it is not A4), so nothing is stretched
+  const pageW = landscape ? 297 : 210;
+  const pageH = pageW * canvas.height / canvas.width;
+  const pdf = new jsPDF({ orientation: landscape ? "landscape" : "portrait", unit: "mm", format: [pageW, pageH] });
   pdf.addImage(canvas.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0,
     pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
 
   return {
     blob: pdf.output("blob"),
-    filename: name.replace(/[^\p{L}\p{N}]+/gu, "_") + "_Certificate.pdf"
+    // \p{M} keeps vowel signs in Devanagari/Kannada names so file names don't come out garbled
+    filename: name.replace(/[^\p{L}\p{M}\p{N}]+/gu, "_") + "_Certificate.pdf"
   };
 }
 
@@ -406,6 +435,12 @@ function triggerDownload(pdf) {
 window.addEventListener("DOMContentLoaded", async () => {
   const q = new URLSearchParams(location.search);
   const email = q.get("email"), name = q.get("name"), sig = q.get("sig");
+
+  // A link that lost part of itself in copy/paste: say so instead of silently showing the form
+  if ((email || name || sig) && !(email && name && sig)) {
+    showMessage("Incomplete link", "This certificate link looks cut off. Please copy the full link, or ask the organisers to resend it.", "var(--err)");
+    return;
+  }
 
   if (email && name && sig) {
     showMessage("Verifying your certificate link...", "One moment.");
